@@ -1,0 +1,347 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>我的新生活｜課文聽讀練習</title>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: "Noto Sans TC", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    background: #f5f7fa;
+    color: #222;
+  }
+  .page {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 28px 18px 40px;
+  }
+  h1 {
+    text-align: center;
+    font-size: 30px;
+    margin: 5px 0 8px;
+  }
+  .hint {
+    text-align: center;
+    color: #666;
+    margin-bottom: 22px;
+    font-size: 16px;
+  }
+  .controls {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  button {
+    border: 0;
+    border-radius: 12px;
+    padding: 10px 16px;
+    font-size: 16px;
+    cursor: pointer;
+  }
+  .stop { background: #e9ecef; }
+  .slow { background: #e7f0ff; }
+  .card {
+    background: white;
+    border-radius: 16px;
+    margin: 12px 0;
+    padding: 15px 18px;
+    box-shadow: 0 2px 8px rgba(0,0,0,.08);
+    display: flex;
+    align-items: center;
+    gap: 14px;
+  }
+  .speak {
+    flex: 0 0 auto;
+    width: 54px;
+    height: 54px;
+    border-radius: 50%;
+    background: #4b7bec;
+    color: white;
+    font-size: 28px;
+    padding: 0;
+  }
+  .speak:active { transform: scale(.96); }
+  .text {
+    font-size: 23px;
+    line-height: 1.6;
+    flex: 1;
+  }
+  .num {
+    color: #888;
+    font-size: 14px;
+    margin-bottom: 2px;
+  }
+  .active {
+    outline: 3px solid #ffd166;
+    background: #fffaf0;
+  }
+  @media (max-width: 520px) {
+    h1 { font-size: 26px; }
+    .text { font-size: 20px; }
+    .speak { width: 50px; height: 50px; }
+  }
+
+  .title-speak {
+    border: 0;
+    background: transparent;
+    font: inherit;
+    font-weight: 700;
+    cursor: pointer;
+    padding: 4px 8px;
+    border-radius: 10px;
+  }
+  .title-speak:active { transform: scale(.98); }
+
+  .char {
+    transition: color .08s, background-color .08s;
+    border-radius: 3px;
+  }
+  .char.speaking {
+    color: #d9480f;
+    background: #fff0c2;
+    font-weight: 700;
+  }
+
+  .title-char { transition: color .08s, background-color .08s; border-radius: 3px; }
+  .title-char.speaking { color: #d9480f; background: #fff0c2; font-weight: 800; }
+
+.title-read{margin-left:8px;padding:4px 10px;border:1px solid #888;border-radius:6px;background:#fff;font-size:16px;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="page">
+  <h1>
+  <button class="title-speak" id="titleButton" onclick="speakTitle()" aria-label="播放課文標題">
+    🔊 <span class="title-char">第</span><span class="title-char">一</span><span class="title-char">課</span>　
+    <span class="title-char">我</span><span class="title-char">的</span><span class="title-char">新</span><span class="title-char">生</span><span class="title-char">活</span>
+  </button>
+</h1><button class="title-read" onclick="speakTitle()" aria-label="朗讀課文標題">朗讀</button>
+  <div class="hint">點 🔊 就可以聽課文唸讀。</div>
+<div id="lesson"></div>
+</div>
+
+<script>
+const sentences = [
+  "暑假結束了，學校開學了。",
+  "我升上四年級，也有了新課表。",
+  "星期一早上有國語課，還有數學課，下午有直排輪。",
+  "星期二早上有美勞課，還有健康課，下午有打擊樂。",
+  "星期三早上有點心課，還有體育課。",
+  "星期四早上有國語課，還有數學課，下午有自然課。",
+  "星期五早上有生活課，還有體育課，下午有治療犬。",
+  "我和同學一起上學，真開心。"
+];
+
+let rate = 0.72;
+let currentCard = null;
+
+function render() {
+  const box = document.getElementById("lesson");
+  sentences.forEach((text, i) => {
+    const card = document.createElement("div");
+    card.className = "card";
+    card.id = "card-" + i;
+
+    const button = document.createElement("button");
+    button.className = "speak";
+    button.textContent = "🔊";
+    button.setAttribute("aria-label", "播放第 " + (i+1) + " 段");
+    button.onclick = () => speak(text, card, button);
+
+    const words = document.createElement("div");
+    words.className = "text";
+
+    const num = document.createElement("div");
+    num.className = "num";
+    num.textContent = "第 " + (i+1) + " 段";
+    words.appendChild(num);
+
+    // 每一個中文字／標點都做成獨立 span，才能逐字變色
+    Array.from(text).forEach(ch => {
+      const span = document.createElement("span");
+      span.className = "char";
+      span.textContent = ch;
+      words.appendChild(span);
+    });
+
+    card.appendChild(button);
+    card.appendChild(words);
+    box.appendChild(card);
+  });
+}
+
+function clearHighlights(card) {
+  if (!card) return;
+  card.querySelectorAll(".char").forEach(c => c.classList.remove("speaking"));
+}
+
+function startHighlight(card, text) {
+  clearHighlights(card);
+  const chars = Array.from(card.querySelectorAll(".char"));
+
+  // 只閃示真正的文字，標點符號直接跳過
+  const usable = chars.filter(c => {
+    const ch = c.textContent.trim();
+    return ch !== "" && !/[，、。！？；：,.!?;:「」『』（）()、]/.test(ch);
+  });
+
+  let i = 0;
+
+  // 所有段落統一放慢，讓閃示文字跟著慢速語音前進。
+  // 標點不閃示，因此會直接進入下一個文字。
+  const base = 330;
+  // 「下午」句型稍微放慢，但不要太慢
+  const delay = text.includes("下午") ? 344 : base;
+
+  function step() {
+    if (i >= usable.length) return;
+
+    usable.forEach(c => c.classList.remove("speaking"));
+    usable[i].classList.add("speaking");
+
+    i++;
+    window._highlightTimer = setTimeout(step, delay);
+  }
+
+  step();
+}
+
+function speak(text, card, button) {
+  if (!("speechSynthesis" in window)) {
+    alert("這個瀏覽器不支援語音播放，請改用 Safari 或 Chrome。");
+    return;
+  }
+
+  speechSynthesis.cancel();
+  if (window._highlightTimer) clearTimeout(window._highlightTimer);
+
+  document.querySelectorAll(".card").forEach(c => {
+    c.classList.remove("active");
+    clearHighlights(c);
+  });
+
+  card.classList.add("active");
+  currentCard = card;
+
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.lang = "zh-TW";
+  utterance.rate = 0.55;
+  utterance.pitch = 1;
+  utterance.volume = 1;
+
+  startHighlight(card, text);
+
+  utterance.onend = () => {
+    if (window._highlightTimer) clearTimeout(window._highlightTimer);
+    clearHighlights(card);
+    card.classList.remove("active");
+    currentCard = null;
+  };
+
+  utterance.onerror = () => {
+    if (window._highlightTimer) clearTimeout(window._highlightTimer);
+    clearHighlights(card);
+    card.classList.remove("active");
+    currentCard = null;
+  };
+
+  speechSynthesis.speak(utterance);
+}
+
+function stopSpeech() { speechSynthesis.cancel(); }
+
+function setRate(value) {
+  rate = value;
+}
+render();
+
+function speakTitle() {
+  if (!("speechSynthesis" in window)) {
+    alert("這個瀏覽器不支援語音播放，請改用 Safari 或 Chrome。");
+    return;
+  }
+  speechSynthesis.cancel();
+  const text = "第一課 我的新生活";
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "zh-TW";
+  u.rate = 0.55;
+  u.pitch = 1;
+  u.volume = 1;
+  speechSynthesis.speak(u);
+}
+</script>
+
+
+
+<script>
+function highlightSentence(button, text) {
+  const card = button.closest(".card");
+  if (!card) return;
+
+  const chars = Array.from(card.querySelectorAll(".char"));
+  chars.forEach(c => c.classList.remove("speaking"));
+
+  // 去掉標點、空白後，找出實際要高亮的文字字元
+  const targetChars = Array.from(text).filter(ch => !/\s/.test(ch));
+  let i = 0;
+
+  // 慢速唸讀下，每個字給一點時間；標點會稍微停頓
+  const base = 420;
+  function step() {
+    if (i >= chars.length) return;
+    chars.forEach(c => c.classList.remove("speaking"));
+    const ch = chars[i];
+    ch.classList.add("speaking");
+
+    const current = targetChars[i] || "";
+    const pause = /[，。！？、；：]/.test(current) ? 520 : base;
+    i++;
+    window._highlightTimer = setTimeout(step, pause);
+  }
+  step();
+}
+
+function speakText(text, button) {
+  speechSynthesis.cancel();
+  if (window._highlightTimer) clearTimeout(window._highlightTimer);
+
+  // 標題沒有逐字字元，就只播放
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang = "zh-TW";
+  u.rate = 0.55;
+  u.pitch = 1;
+  u.volume = 1;
+
+  const card = button.closest(".card");
+  if (card) {
+    const chars = Array.from(card.querySelectorAll(".char"));
+    chars.forEach(c => c.classList.remove("speaking"));
+  }
+
+  if (button) button.classList.add("active");
+
+  // 課文句子的逐字高亮
+  if (card) highlightSentence(button, text);
+
+  u.onend = () => {
+    if (window._highlightTimer) clearTimeout(window._highlightTimer);
+    if (card) card.querySelectorAll(".char").forEach(c => c.classList.remove("speaking"));
+    if (button) button.classList.remove("active");
+  };
+
+  u.onerror = () => {
+    if (window._highlightTimer) clearTimeout(window._highlightTimer);
+    if (card) card.querySelectorAll(".char").forEach(c => c.classList.remove("speaking"));
+    if (button) button.classList.remove("active");
+  };
+
+  speechSynthesis.speak(u);
+}
+</script>
+
+</body>
+</html>
